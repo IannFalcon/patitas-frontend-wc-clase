@@ -8,9 +8,11 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 import pe.edu.cibertec.patitas_frontend_wc_a.dto.LoginRequestDTO;
 import pe.edu.cibertec.patitas_frontend_wc_a.dto.LoginResponseDTO;
 import pe.edu.cibertec.patitas_frontend_wc_a.viewmodel.LoginModel;
+import reactor.core.publisher.Mono;
 
 @Controller
 @RequestMapping("/login")
@@ -18,6 +20,9 @@ public class LoginController {
 
     @Autowired
     RestTemplate restTemplateAutenticacion;
+
+    @Autowired
+    WebClient webClientAutenticacion;
 
     @GetMapping("/inicio")
     public String inicio (Model model){
@@ -47,8 +52,15 @@ public class LoginController {
             // Creamos el objeto para la solicitud y enviamos los parametros
             LoginRequestDTO loginRequestDTO = new LoginRequestDTO(tipoDocumento, numeroDocumento, password);
 
-            // Realizamos la solicitud
-            LoginResponseDTO loginResponseDTO = restTemplateAutenticacion.postForObject("/login", loginRequestDTO, LoginResponseDTO.class);
+            // Realizamos la solicitud al servicio
+            Mono<LoginResponseDTO> monoLoginResponseDTO = webClientAutenticacion.post()
+                    .uri("http://localhost:8081/autenticacion/login")
+                    .body(Mono.just(loginRequestDTO), LoginRequestDTO.class)
+                    .retrieve()
+                    .bodyToMono(LoginResponseDTO.class);
+
+            // Recuperar el resultado de forma sincrona
+            LoginResponseDTO loginResponseDTO = monoLoginResponseDTO.block();
 
             // Si la respuesta no es null y el codigo es 00
             if (loginResponseDTO != null && loginResponseDTO.codigo().equals("00")){
