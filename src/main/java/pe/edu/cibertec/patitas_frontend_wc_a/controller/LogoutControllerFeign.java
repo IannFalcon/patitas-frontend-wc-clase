@@ -11,7 +11,7 @@ import reactor.core.publisher.Mono;
 @RestController
 @RequestMapping("/logout")
 @CrossOrigin("http://localhost:5173/")
-public class LoginControllerFeign {
+public class LogoutControllerFeign {
 
     @Autowired
     AutenticacionClient autenticacionClient;
