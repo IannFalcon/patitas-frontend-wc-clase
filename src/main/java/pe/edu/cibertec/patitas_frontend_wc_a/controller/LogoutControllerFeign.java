@@ -17,32 +17,32 @@ public class LogoutControllerFeign {
     AutenticacionClient autenticacionClient;
 
     @PostMapping("/cerrar-sesion-feign")
-    public Mono<ResponseEntity<LogoutResponseDTO>> cerrarSesion(@RequestBody LogoutRequestDTO logoutRequestDTO) {
+    public ResponseEntity<LogoutResponseDTO> cerrarSesion(@RequestBody LogoutRequestDTO logoutRequestDTO) {
 
         System.out.println("Cerrar sesión con Feign");
 
-        // Realizar la solicitud al servicio de autenticación
-        return Mono.fromCallable(() -> autenticacionClient.logout(logoutRequestDTO))
-            .flatMap(responseEntity -> { // Realizar el mapeo de la respuesta
+        try {
+            // Realizar la solicitud al servicio de autenticación de manera síncrona manteniendo la programación reactiva
+            ResponseEntity<LogoutResponseDTO> responseEntity = Mono.just(autenticacionClient.logout(logoutRequestDTO)).block();
+            // Verificar si la respuesta es exitosa
+            if (responseEntity.getStatusCode().is2xxSuccessful()) {
+                // Obtener el cuerpo de la respuesta
+                LogoutResponseDTO logoutResponseDTO = responseEntity.getBody();
                 // Verificar si la respuesta es exitosa
-                if (responseEntity.getStatusCode().is2xxSuccessful()) {
-                    // Obtener el cuerpo de la respuesta
-                    LogoutResponseDTO logoutResponseDTO = responseEntity.getBody();
-                    // Verificar si la respuesta es exitosa
-                    if (logoutResponseDTO != null && logoutResponseDTO.codigo().equals("00")) {
-                        return Mono.just(ResponseEntity.ok(logoutResponseDTO));
-                    } else {
-                        return Mono.just(ResponseEntity.status(401).body(new LogoutResponseDTO("02", "Error: No se pudo cerrar la sesión.")));
-                    }
+                if (logoutResponseDTO != null && logoutResponseDTO.codigo().equals("00")) {
+                    return ResponseEntity.ok(logoutResponseDTO);
                 } else {
-                    return Mono.just(ResponseEntity.status(500).body(new LogoutResponseDTO("99", "Error: Ocurrió un problema en el cierre de sesión.")));
+                    return ResponseEntity.status(401).body(new LogoutResponseDTO("99", "Error: No se pudo cerrar la sesión."));
                 }
-        }).onErrorResume(e -> { // Manejo de errores
+            } else {
+                return ResponseEntity.status(500).body(new LogoutResponseDTO("99", "Error: Ocurrió un problema en el cierre de sesión."));
+            }
+        } catch (Exception e) {
             // Imprimir el error
             System.out.println(e.getMessage());
             // Retornar la respuesta de error
-            return Mono.just(ResponseEntity.status(500).body(new LogoutResponseDTO("99", "Error: Ocurrió un problema en el cierre de sesión.")));
-        });
+            return ResponseEntity.status(500).body(new LogoutResponseDTO("99", "Error: Ocurrió un error desconocido durante el cierre de sesión."));
+        }
 
     }
 
